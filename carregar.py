@@ -9,6 +9,13 @@ def conectar() -> duckdb.DuckDBPyConnection:
     return duckdb.connect(str(config.DB_PATH))
 
 
+def criar_regiao(con: duckdb.DuckDBPyConnection) -> None:
+    """Tabela UF -> regiao (usada pelas views de votos e de horarios)."""
+    con.execute("DROP TABLE IF EXISTS regiao")
+    con.execute("CREATE TABLE regiao (uf VARCHAR, regiao VARCHAR)")
+    con.executemany("INSERT INTO regiao VALUES (?, ?)", list(config.UF_REGIAO.items()))
+
+
 def carregar_csvs(ano: int) -> None:
     con = conectar()
     base = config.RAW_DIR / str(ano)
@@ -56,10 +63,7 @@ def carregar_csvs(ano: int) -> None:
         FROM read_csv('{pad_d}', {opts})
     """)
 
-    # Tabela de regioes
-    con.execute("DROP TABLE IF EXISTS regiao")
-    con.execute("CREATE TABLE regiao (uf VARCHAR, regiao VARCHAR)")
-    con.executemany("INSERT INTO regiao VALUES (?, ?)", list(config.UF_REGIAO.items()))
+    criar_regiao(con)
 
     # View enriquecida
     con.execute("""

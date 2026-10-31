@@ -33,6 +33,18 @@ def percentual_candidatos(cargo: str, turno: int, uf: str | None = None) -> pd.D
     """, params)
 
 
+def tempo_cabine(turno: int) -> pd.DataFrame:
+    """Tempo entre o mesario habilitar o eleitor e o voto ser computado, por regiao."""
+    return _q("""
+        SELECT regiao, count(*) AS votos,
+               round(avg(seg_cabine), 1) AS media_seg,
+               round(median(seg_cabine), 1) AS mediana_seg
+        FROM v_voto_horario
+        WHERE turno = ? AND seg_cabine IS NOT NULL
+        GROUP BY regiao ORDER BY regiao
+    """, [turno])
+
+
 def por_regiao(cargo: str, turno: int) -> pd.DataFrame:
     """% de votos validos de cada candidato dentro de cada regiao."""
     return _q("""

@@ -1,5 +1,7 @@
 """Gera CSVs FICTICIOS no formato do TSE e logs falsos, so para testar o pipeline."""
+import io
 import random
+import zipfile
 from pathlib import Path
 
 import config
@@ -33,12 +35,27 @@ for uf, (_, nmun) in UFS.items():
             for (nr, nm), q in zip(CANDS, votos):
                 vl.append(f"{ANO};1;{uf};{cod};MUN{m};1;{secao};1;Presidente;{nr};{nm};{q};1")
             dl.append(f"{ANO};1;{uf};{cod};1;{secao};1;Presidente;{aptos};{comp};{aptos-comp}")
-            # log falso, um arquivo por secao, com horarios entre 8h e 17h
-            with open(ldir / f"o00407-{cod:05d}0001{secao:04d}.dat", "w", encoding="latin-1") as f:
-                for _ in range(comp):
-                    h = random.choices(range(8, 17), weights=[3, 5, 4, 3, 2, 3, 4, 3, 1])[0]
-                    f.write(f"04/10/2026 {h:02d}:{random.randint(0,59):02d}:{random.randint(0,59):02d}"
-                            "\tINFO\tLOGD\tVoto\tO voto do eleitor foi computado\n")
+            # log falso no formato real: .jez (zip) com logd.dat, um por secao
+            L = ["25/09/2026 11:17:10\tINFO\t01829267\tGAP\tIniciando aplicação - "
+                 "ELEIÇÃO OFICIAL PRIMEIRO TURNO - 1º turno\tAAAA"]
+            for _ in range(comp):
+                h = random.choices(range(8, 17), weights=[3, 5, 4, 3, 2, 3, 4, 3, 1])[0]
+                t = h * 3600 + random.randint(0, 3599)
+                dur = random.randint(30, 120)
+                for seg, msg in ((t, "Eleitor foi habilitado"), (t + dur, "O voto do eleitor foi computado")):
+                    L.append(f"04/10/2026 {seg//3600:02d}:{seg%3600//60:02d}:{seg%60:02d}"
+                             f"\tINFO\t01829267\tVOTA\t{msg}\tBBBB")
+            L.append("21/10/2026 17:30:19\tINFO\t01829267\tGAP\tIniciando aplicação - "
+                     "ELEIÇÃO OFICIAL SEGUNDO TURNO - 2º turno\tCCCC")
+            for _ in range(comp // 2):  # 2o turno com menos votos, so p/ testar a troca de turno
+                seg = random.randint(8 * 3600, 16 * 3600)
+                L.append(f"25/10/2026 {seg//3600:02d}:{seg%3600//60:02d}:{seg%60:02d}"
+                         "\tINFO\t01829267\tVOTA\tO voto do eleitor foi computado\tDDDD")
+            buf = io.BytesIO()
+            with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+                z.writestr("logd.dat", "\n".join(L).encode("latin-1"))
+            nome = f"o03221{uf.lower()}{cod:05d}0001{secao:04d}-log.jez"
+            (ldir / nome).write_bytes(buf.getvalue())
     (vdir / f"votacao_secao_{ANO}_{uf}.csv").write_text("\n".join(vl), encoding="latin-1")
     (ddir / f"detalhe_votacao_secao_{ANO}_{uf}.csv").write_text("\n".join(dl), encoding="latin-1")
 print("dados de teste gerados em", config.DATA_DIR)

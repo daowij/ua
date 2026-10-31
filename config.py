@@ -31,9 +31,20 @@ UF_REGIAO = {
     "ZZ": "Exterior",
 }
 
-# Linha do log da urna que marca um voto concluído (uma por eleitor).
-# VALIDE contra um log real: a mensagem exata pode variar entre versões.
-LOG_VOTO_REGEX = r"^(\d{2}/\d{2}/\d{4} \d{2}:\d{2}:\d{2}).*O voto do eleitor foi computado"
+# --- Log de urna (formato conferido em um log real de 2026) -------------------
+# O portal entrega LogDeUrna_o03221sc8113200730167_<n>.zip -> .jez (outro zip)
+# -> logd.dat (texto latin-1, campos separados por TAB:
+#    data hora, nivel, id da urna, modulo, mensagem, hash).
 
-# Nome do arquivo de log: o00407-<município 5><zona 4><seção 4>
-LOG_NOME_REGEX = r"-(\d{5})(\d{4})(\d{4})"
+# Mensagens exatas do log
+MSG_VOTO = "O voto do eleitor foi computado"   # uma por eleitor que concluiu o voto
+MSG_HABILITADO = "Eleitor foi habilitado"      # mesario liberou a urna para o eleitor
+
+# Identificacao no nome do arquivo: o<eleicao 5><uf 2><municipio 5><zona 4><secao 4>
+# ex.: o03221sc8113200730167 -> SC, municipio 81132, zona 0073, secao 0167
+LOG_NOME_REGEX = r"o(\d{5})([a-z]{2})(\d{5})(\d{4})(\d{4})"
+
+# Turno em vigor (um mesmo log cobre 1o e 2o turno). Exemplos reais:
+#   "Iniciando aplicação - ELEIÇÃO OFICIAL SEGUNDO TURNO - 2º turno"
+#   "Turno da UE: 1º turno"
+LOG_TURNO_REGEX = r"(?:ELEIÇÃO OFICIAL.*?- |Turno da UE:\s*)(\d)º turno"
